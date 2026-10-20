@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Rippenvasen-Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Werkbank – große Drehbühne mit der Vase, darunter (Desktop: daneben) gruppierte Regler wie an einem Slicer */
+:root{
+  --bg:#ECEFEC; --panel:#F7F8F6; --stage:#E2E6E2; --fg:#1B201D; --muted:#5E6862;
+  --line:#CFD6D1; --accent:#2F6B57; --accent-fg:#FFFFFF; --warn:#9A5B12; --glass:#2F7FB5;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614; --panel:#1A1F1C; --stage:#0E1210; --fg:#E3E8E4; --muted:#93A099;
+  --line:#2C3530; --accent:#6FB89A; --accent-fg:#0E1210; --warn:#E0A55A; --glass:#7DBDE8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --panel:#1A1F1C; --stage:#0E1210; --fg:#E3E8E4; --muted:#93A099;
+  --line:#2C3530; --accent:#6FB89A; --accent-fg:#0E1210; --warn:#E0A55A; --glass:#7DBDE8; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:16px 40px;display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:900px){.wrap{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}.stagecol{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}}
+header h1{font-family:var(--f-display);font-weight:700;font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.1;margin:0;text-wrap:balance;letter-spacing:-.01em}
+header p{margin:.35rem 0 0;color:var(--muted);max-width:60ch}
+.stagecol{display:grid;gap:12px;min-width:0}
+.stage{position:relative;background:var(--stage);border-radius:14px;aspect-ratio:1/1.05;max-height:70vh;width:100%;max-width:100%;overflow:hidden;touch-action:none;cursor:grab}
+.stage:active{cursor:grabbing}
+.stage canvas{display:block;width:100%;height:100%}
+.hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);pointer-events:none}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.stat b{display:block;font-family:var(--f-mono);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat.warn b{color:var(--warn)}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.swatches span{font-size:12px;color:var(--muted);margin-right:4px}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:2px}
+.controls{display:grid;gap:12px;min-width:0}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;cursor:pointer}
+.chip{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+fieldset{border:1px solid var(--line);background:var(--panel);border-radius:12px;margin:0;padding:10px 14px 12px;display:grid;gap:6px;min-width:0}
+legend{font-family:var(--f-display);font-weight:500;font-size:16px;padding:0 6px;margin-left:-6px}
+.row{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) 4.6em;align-items:center;gap:10px}
+.row label{font-size:14px;color:var(--fg)}
+.row output{font-family:var(--f-mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;min-width:0}
+@media (max-width:420px){.row{grid-template-columns:minmax(0,1fr) 4.6em}.row input{grid-column:1/-1;grid-row:2}.row select{grid-column:1/-1!important;grid-row:2}}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{background:var(--accent);color:var(--accent-fg);border:none;border-radius:10px;padding:11px 18px;font-weight:500}
+.btn[disabled]{opacity:.55;cursor:progress}
+.btn2{background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 16px}
+.btn2:hover{border-color:var(--accent)}
+select{font:inherit;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+.status{font-size:13px;color:var(--muted);min-height:1.2em}
+.note{font-size:13px;color:var(--muted);margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ver{font-family:var(--f-mono);font-weight:400;font-size:.42em;color:var(--muted);letter-spacing:0;vertical-align:middle;white-space:nowrap}
+.chtabs{display:flex;flex-wrap:wrap;gap:6px}
+.secwrap{background:var(--stage);border-radius:10px;height:260px;max-width:100%;overflow:hidden}
+#sec{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.resetbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.exthint{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.chtabs .chip{padding:4px 12px;font-size:13px}
+.profwrap{background:var(--stage);border-radius:10px;height:260px;max-width:100%;overflow:hidden}
+#prof{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.profbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.ptinfo{flex:1 1 12em;font-size:13px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:0}
+.btn2.sm{padding:6px 12px;font-size:13px}
+.btn2.sm[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn2[disabled]{opacity:.45;cursor:default}
+.tog{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.tog input{accent-color:var(--accent);width:18px;height:18px;margin:0}
+.note.warn{color:var(--warn)}
+</style>
+
+<div class="wrap">
+  <div class="stagecol">
+    <header>
+      <h1>Rippenvasen-Generator <span class="ver" id="ver">V 1.8.0</span></h1>
+      <p>Grundform, Dellen und Rippen per Regler formen, dann als STL für den Vasenmodus exportieren.</p>
+    </header>
+    <div class="stage" id="stage"><span class="hint">Ziehen zum Drehen · Mausrad zum Zoomen</span></div>
+    <div class="stats">
+      <div class="stat"><span>Höhe</span><b id="sH">–</b></div>
+      <div class="stat"><span id="sDl">Max. Ø</span><b id="sD">–</b></div>
+      <div class="stat" id="spacingBox"><span>Rippenabstand</span><b id="sS">–</b></div>
+      <div class="stat" title="Engste Stelle innen, nach Abzug der Wandstärke"><span>Innen-Ø min</span><b id="sF">–</b></div>
+    </div>
+    <div class="swatches" id="swatches"><span>Vorschaufarbe</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="presets" id="presets"></div>
+    <div class="resetbar">
+      <button type="button" class="btn2 sm" id="reset">Zurücksetzen</button>
+      <button type="button" class="btn2 sm" id="undo" hidden>Rückgängig</button>
+      <span class="ptinfo" id="resetInfo" role="status"></span>
+    </div>
+    <form id="form" class="controls" autocomplete="off">
+      <fieldset><legend>Grundform</legend>
+        <div class="chtabs" id="chtabs" role="group" aria-label="Kurve bearbeiten" hidden>
+          <button type="button" class="chip" data-ch="pts" aria-pressed="true">Kontur</button>
+          <button type="button" class="chip" data-ch="ampPts" aria-pressed="false">Lappen-Stärke</button>
+          <button type="button" class="chip" data-ch="rotPts" aria-pressed="false">Drehung</button>
+        </div>
+        <div class="profwrap"><canvas id="prof" aria-label="Profil-Editor: Punkte ziehen, auf freie Fläche tippen fügt einen Punkt hinzu"></canvas></div>
+        <div class="profbar">
+          <span class="ptinfo" id="ptinfo">Punkt ziehen · freie Stelle antippen = neuer Punkt</span>
+          <button type="button" class="btn2 sm" id="ptCorner" disabled>Spitze Ecke</button>
+          <button type="button" class="btn2 sm" id="ptDel" disabled>Punkt löschen</button>
+        </div>
+        <div id="g-form"></div></fieldset>
+      <fieldset><legend>Querschnitt</legend>
+        <div class="row"><label for="p-secType">Form</label><select id="p-secType" style="grid-column:2/-1"></select></div>
+        <div class="secwrap"><canvas id="sec" aria-label="Querschnitt von oben: Punkte ziehen, freie Stelle antippen fügt einen Punkt hinzu"></canvas></div>
+        <div class="profbar">
+          <span class="ptinfo" id="secInfo"></span>
+          <button type="button" class="btn2 sm" id="secCorner" disabled>Spitze Ecke</button>
+          <button type="button" class="btn2 sm" id="secDel" disabled>Punkt löschen</button>
+        </div>
+        <div class="row" id="symRow" hidden><label for="p-secSym">Symmetrie</label><select id="p-secSym" style="grid-column:2/-1"></select></div>
+        <div id="g-sec"></div>
+      </fieldset>
+      <fieldset><legend>Dellen</legend><div id="g-dent"></div>
+        <div class="exthint" id="extHint" hidden>
+          <p class="note">Stärke und Drehung der Lappen zeichnest du als Kurven oben im Profil-Editor unter „Grundform“.</p>
+          <div class="actions"><button type="button" class="btn2 sm" data-goto="ampPts">Lappen-Stärke bearbeiten</button><button type="button" class="btn2 sm" data-goto="rotPts">Drehung bearbeiten</button></div>
+        </div>
+        <div class="actions"><button type="button" class="btn2" id="reroll">Neu würfeln</button></div>
+      </fieldset>
+      <fieldset><legend id="ribLegend">Rippen</legend><div id="g-rib"></div></fieldset>
+      <fieldset><legend>Glaseinsatz</legend>
+        <label class="tog"><input type="checkbox" id="p-cylOn"> Mindestmaß für einen Glaszylinder einhalten</label>
+        <div id="g-glass"></div>
+        <p class="note" id="glassNote"></p>
+      </fieldset>
+    </form>
+    <fieldset><legend>Export</legend>
+      <div class="actions">
+        <select id="quality" aria-label="Exportauflösung">
+          <option value="std">Standard (kleinere Datei)</option>
+          <option value="fine">Fein (glattere Rippen)</option>
+        </select>
+        <button class="btn" id="export" type="button">STL exportieren</button>
+        <button class="btn2" id="import" type="button">Einstellungen laden</button>
+        <input type="file" id="importFile" accept=".json,.zip,application/json,application/zip" hidden>
+      </div>
+      <div class="status" id="status" role="status"></div>
+      <p class="note">Das Modell ist ein geschlossener Körper. Im Slicer den Vasenmodus (Spiral Vase) aktivieren, dann wird nur die Außenwand gedruckt. Die STL liegt zusammen mit deinen Einstellungen in einer ZIP-Datei. Über „Einstellungen laden“ kannst du die ZIP oder die JSON daraus wieder öffnen.</p>
+    </fieldset>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+const APP_VERSION = "1.8.0";
+const DEFS = [
+  // group, key, label, min, max, step, unit
+  ["form","height","Höhe",60,400,1,"mm"],
+  ["form","scale","Breite",50,150,1,"%"],
+  ["form","waveAmt","Profilwellen",0,15,0.5,"mm"],
+  ["form","waves","Wellen-Anzahl",1,10,0.5,""],
+  ["dent","dent","Stärke",0,30,0.5,"%",[0,1,2]],
+  ["dent","lobes","Anzahl",1,12,1,""],
+  ["dent","lshape","Lappen-Form",0.4,3,0.05,"",[2,3]],
+  ["dent","flow","Verlauf",0,3,0.1,"",[0]],
+  ["dent","dsize","Größe",0.1,1,0.01,"",[1]],
+  ["dent","dheight","Höhe der Dellen",15,85,1,"%",[1]],
+  ["dent","ltwist","Verdrehung",-1,1,0.01,"U",[2,3]],
+  ["dent","lfocus","Nur an breiter Stelle",0,1,0.05,"",[2]],
+  ["dent","follow","Rippen folgen",0,3,0.05,""],
+  ["rib","ribs","Anzahl rundherum",0,300,1,""],
+  ["rib","drows","Rauten-Reihen",2,40,1,"",null,[1]],
+  ["rib","straight","Gerade unten",0,70,1,"%",null,[1]],
+  ["rib","depth","Tiefe",0,4,0.1,"mm"],
+  ["rib","sharp","Schärfe",0.4,4,0.1,""],
+  ["rib","twist","Verdrehung",-1,1,0.01,"U"],
+  ["rib","wander","Wandern",0,3,0.05,""],
+  ["rib","band","Glatter Rand",0,20,0.5,"mm"],
+  ["glass","cylD","Glas-Ø",20,250,0.5,"mm"],
+  ["glass","cylH","Glas-Höhe",20,400,1,"mm"],
+  ["glass","gap","Spiel",0,5,0.1,"mm"],
+  ["glass","wall","Wandstärke",0.3,1.5,0.05,"mm"],
+  ["sec","secDepth","Tiefe",20,100,1,"%",null,null,[1]],
+  ["sec","secWaist","Taille",15,95,0.5,"%",null,null,[2]],
+  ["sec","secForm","Eckigkeit",0,100,1,"%",null,null,[2]],
+  ["sec","secCorners","Ecken",3,8,1,"",null,null,[3]],
+  ["sec","secRound","Rundung",2,95,1,"%",null,null,[3]],
+  ["sec","secTip","Spitze",0,100,1,"%",null,null,[4]],
+  ["sec","secTwist","Verdrehung",-2,2,0.01,"U",null,null,[1,2,3,4,5]],
+];
+const GLASS_KEYS=["cylOn","cylD","cylH","gap","wall"];
+const PATTERNS = ["Rippen","Rauten"];
+const RIB_ALIGN = ["Mit der Form","Senkrecht"];
+const DEFAULTS = {ribAlign:0,secType:0,secSym:2,secPts:[[0,1,0],[1,1,0]],secDepth:65,secWaist:40,secForm:100,secCorners:4,secRound:30,secTip:50,secTwist:0,lshape:1,ampPts:[[0,0],[0.35,40],[0.52,0],[0.75,-40],[1,0]],rotPts:[[0,0],[1,60]],pattern:0,drows:12,straight:0,cylOn:0,cylD:60,cylH:150,gap:1,wall:0.6,mode:1,scale:100,waveAmt:0,waves:3,dsize:0.35,dheight:45,ltwist:0,lfocus:0,follow:0.8,flow:1,seed:7};
+const MODES = ["Organisch","Gezielte Dellen","Symmetrische Lappen","Extrem: Lappen mit Kurven"];
+const CURVE_KEYS=["pts","ampPts","rotPts","secPts"];
+// profile points: [height 0..1, radius mm, corner?]
+const PRESETS = {
+  "Düne":    {height:220,pts:[[0,46],[0.46,84],[0.94,54],[1,52]],mode:1,dent:8,lobes:2,dsize:0.33,dheight:42,follow:1.4,ribs:150,depth:1.3,sharp:1.4,twist:0.02,wander:0.5,band:3,seed:7},
+  "Jelly":   {height:215,pts:[[0,57],[0.08,53],[0.34,90],[0.54,61],[0.76,90],[1,52]],mode:1,dent:0,lobes:2,follow:0,ribs:170,depth:1.0,sharp:1.3,twist:0,wander:0,band:3},
+  "Brim":    {height:210,pts:[[0,56],[0.07,56],[0.42,68],[0.64,100,1],[0.84,80],[1,72]],mode:2,dent:11,lobes:4,ltwist:0,lfocus:1,follow:0.5,ribs:110,depth:2.2,sharp:1.8,twist:0,wander:0,band:2},
+  "Organisch":{height:220,pts:[[0,46],[0.46,84],[0.94,54],[1,52]],mode:0,dent:9,lobes:3,flow:1.2,follow:0.8,ribs:150,depth:1.3,sharp:1.4,twist:0.04,wander:0.9,band:3,seed:7},
+  "Spirale": {height:200,pts:[[0,40],[0.35,62],[0.85,40],[1,46]],mode:0,dent:0,lobes:2,flow:0,follow:0,ribs:60,depth:2.4,sharp:1,twist:0.6,wander:0,band:2,seed:3},
+  "Zwilling":{height:250,pts:[[0,56.2],[0.16,70.9],[0.34,79],[0.52,70.1],[0.68,56.3],[0.84,49.4],[1,56]],
+              secType:2,secWaist:35.4,secForm:100,secTwist:-0.5625,mode:1,dent:0,lobes:2,follow:0,ribs:58,depth:0.5,sharp:0.3,ribAlign:1,twist:0,wander:0,band:2},
+  "Laterne": {height:230,pts:[[0,62],[0.06,60],[0.3,72],[0.62,86],[0.88,80],[1,66]],mode:1,dent:0,lobes:2,follow:0,pattern:1,ribs:28,drows:11,straight:24,depth:2.2,sharp:0.55,twist:0,wander:0,band:2},
+  "Lampe":   {height:186,pts:[[0,40.4],[0.18,47.5],[0.35,56.2],[0.52,59.7],[0.69,55.6],[0.87,46.9],[1,41.8]],mode:3,lobes:6,lshape:1.4,ltwist:0,
+              ampPts:[[0,0],[0.09,18],[0.2,36],[0.35,39],[0.43,27],[0.52,0],[0.61,-29],[0.69,-39],[0.82,-38],[0.91,-26],[1,0]],rotPts:[[0,0],[1,70]],
+              follow:0,ribs:0,depth:0,sharp:1,twist:0,wander:0,band:0},
+  "Turm":    {height:300,pts:[[0,42],[0.3,48],[0.8,40],[1,44]],mode:0,dent:14,lobes:4,flow:2.2,follow:1,ribs:90,depth:1.8,sharp:2.2,twist:-0.1,wander:1.6,band:3,seed:21},
+};
+function clonePreset(n){ const p=Object.assign({},PRESETS[n]); CURVE_KEYS.forEach(k=>p[k]=p[k].map(q=>q.slice())); return p; }
+for(const k in PRESETS) PRESETS[k]=Object.assign({},DEFAULTS,PRESETS[k]);
+const COLORS = [["Moonlight Grey","#E4E1DA"],["Pine","#2E5A46"],["Ocean","#3C6E8F"],["Blossom","#E2A8A8"],["Graphit","#3A3D40"],["Senf","#D7A23A"]];
+
+let P = clonePreset("Düne");
+const DEF_KEYS=new Set(["seed","mode","cylOn","pattern","secType","secSym","ribAlign"]); DEFS.forEach(d=>DEF_KEYS.add(d[1]));
+// Turns a saved settings object into parameters; returns null if it isn't one of ours
+function parseSettings(s){
+  if(!s || typeof s!=="object" || !Array.isArray(s.pts) || s.pts.length<2 || s.pts.length>40) return null;
+  if(!s.pts.every(q=>Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1]))) return null;
+  const out=Object.assign({},DEFAULTS,{height:200,ribs:120,depth:1.2,sharp:1.4,twist:0,wander:0,band:3,dent:0,lobes:2});
+  for(const k in s) if(DEF_KEYS.has(k) && s[k]!==null && s[k]!=="" && isFinite(s[k])) out[k]=+s[k];
+  DEFS.forEach(([,k,,min,max])=>{ out[k]=Math.min(max,Math.max(min,out[k])); });
+  out.mode=Math.min(3,Math.max(0,Math.round(out.mode)));
+  const curve=(a,lo,hi)=>{ if(!Array.isArray(a)||a.length<2||a.length>40||!a.every(q=>Array.isArray(q)&&isFinite(q[0])&&isFinite(q[1]))) return null;
+    const c=a.map(q=>[Math.min(1,Math.max(0,+q[0])),Math.min(hi,Math.max(lo,+q[1])),q[2]?1:0]).sort((x,y)=>x[0]-y[0]); c[0][0]=0; c[c.length-1][0]=1; return c; };
+  out.ampPts=curve(s.ampPts,-100,100)||DEFAULTS.ampPts.map(q=>q.slice());
+  out.rotPts=curve(s.rotPts,-360,360)||DEFAULTS.rotPts.map(q=>q.slice());
+  out.secType=Math.min(5,Math.max(0,Math.round(out.secType))); out.secSym=Math.min(6,Math.max(1,Math.round(out.secSym)));
+  const sp=curve(s.secPts,0.1,1.3); out.secPts=sp||DEFAULTS.secPts.map(q=>q.slice()); if(out.secType===5&&!sp) out.secType=0; out.cylOn=out.cylOn?1:0; out.pattern=out.pattern?1:0; out.ribAlign=out.ribAlign?1:0;
+  const pts=s.pts.map(q=>[Math.min(1,Math.max(0,+q[0])),Math.min(250,Math.max(5,+q[1])),q[2]?1:0]).sort((a,b)=>a[0]-b[0]);
+  pts[0][0]=0; pts[pts.length-1][0]=1; out.pts=pts;
+  return out;
+}
+// The page always opens with Düne; only the glass insert measurements carry over from the last visit.
+try{ const s=parseSettings(JSON.parse(localStorage.getItem("vase-params")||"null")); if(s) GLASS_KEYS.forEach(k=>P[k]=s[k]); }catch(e){}
+
+// ---------- Controls ----------
+const outputs = {};
+function fmt(k,v){ const d=DEFS.find(x=>x[1]===k); const st=d[5]; const dec = st<0.1?2:(st<1?1:0); return (+v).toFixed(dec)+(d[6]?" "+d[6]:""); }
+// mode selector at top of the dent group
+const modeRow=document.createElement("div"); modeRow.className="row";
+modeRow.innerHTML=`<label for="p-mode">Art</label><select id="p-mode" style="grid-column:2/-1">${MODES.map((m,i)=>`<option value="${i}">${m}</option>`).join("")}</select>`;
+document.getElementById("g-dent").appendChild(modeRow);
+const modeSel=modeRow.querySelector("select");
+modeSel.addEventListener("change",()=>{ P.mode=+modeSel.value; markPreset(null); applyModeVisibility(); schedule(); });
+// pattern selector at top of the rib group
+const patRow=document.createElement("div"); patRow.className="row";
+patRow.innerHTML=`<label for="p-pattern">Muster</label><select id="p-pattern" style="grid-column:2/-1">${PATTERNS.map((m,i)=>`<option value="${i}">${m}</option>`).join("")}</select>`;
+document.getElementById("g-rib").appendChild(patRow);
+const patSel=patRow.querySelector("select");
+patSel.addEventListener("change",()=>{ P.pattern=+patSel.value; markPreset(null); applyModeVisibility(); schedule(); });
+// rib course; only matters when the cross-section is not a circle
+const alignRow=document.createElement("div"); alignRow.className="row";
+alignRow.innerHTML=`<label for="p-ribAlign">Verlauf</label><select id="p-ribAlign" style="grid-column:2/-1">${RIB_ALIGN.map((m,i)=>`<option value="${i}">${m}</option>`).join("")}</select>`;
+document.getElementById("g-rib").appendChild(alignRow);
+const alignSel=alignRow.querySelector("select");
+alignSel.addEventListener("change",()=>{ P.ribAlign=+alignSel.value; markPreset(null); schedule(); });
+const modeRows=[], patRows=[], secRows=[];
+function applyModeVisibility(){ modeRows.forEach(([row,ms])=>row.hidden=!ms.includes(P.mode));
+  const ext=P.mode===3, tabs=document.getElementById("chtabs");
+  const hint=document.getElementById("extHint"); if(hint) hint.hidden=!ext;
+  if(tabs){ tabs.hidden=!ext; if(!ext && typeof activeCh!=="undefined" && activeCh!=="pts") setChannel("pts"); } patRows.forEach(([row,ps])=>row.hidden=!ps.includes(P.pattern)); document.getElementById("ribLegend").textContent=PATTERNS[P.pattern]; document.getElementById("reroll").hidden=P.mode===2;
+  secRows.forEach(([row,ts])=>row.hidden=!ts.includes(P.secType)); document.getElementById("symRow").hidden=P.secType!==5; alignRow.hidden=P.secType===0; }
+DEFS.forEach(([g,k,label,min,max,step,unit,modes,pats,secs])=>{
+  const row=document.createElement("div"); row.className="row";
+  if(modes) modeRows.push([row,modes]);
+  if(pats) patRows.push([row,pats]);
+  if(secs) secRows.push([row,secs]);
+  row.innerHTML=`<label for="p-${k}">${label}</label><input type="range" id="p-${k}" min="${min}" max="${max}" step="${step}"><output for="p-${k}"></output>`;
+  document.getElementById("g-"+g).appendChild(row);
+  const inp=row.querySelector("input"), out=row.querySelector("output");
+  outputs[k]={inp,out};
+  inp.addEventListener("input",()=>{ P[k]=+inp.value; out.textContent=fmt(k,P[k]); markPreset(null); schedule(); });
+});
+const cylToggle=document.getElementById("p-cylOn");
+cylToggle.addEventListener("change",()=>{ P.cylOn=cylToggle.checked?1:0; document.getElementById("g-glass").hidden=!P.cylOn; schedule(); });
+function syncControls(){ for(const k in outputs){ outputs[k].inp.value=P[k]; outputs[k].out.textContent=fmt(k,P[k]); } modeSel.value=String(P.mode); patSel.value=String(P.pattern); alignSel.value=String(P.ribAlign); applyModeVisibility();
+  cylToggle.checked=!!P.cylOn; document.getElementById("g-glass").hidden=!P.cylOn;
+  document.getElementById("p-secType").value=String(P.secType); document.getElementById("p-secSym").value=String(P.secSym); }
+
+const presetBox=document.getElementById("presets");
+Object.keys(PRESETS).forEach(name=>{
+  const b=document.createElement("button"); b.type="button"; b.className="chip"; b.textContent=name; b.dataset.name=name;
+  b.addEventListener("click",()=>applyPreset(name));
+  presetBox.appendChild(b);
+});
+function applyPreset(name){ const keep={}; GLASS_KEYS.forEach(k=>keep[k]=P[k]); P=Object.assign(clonePreset(name),keep); selPt=-1; fitView(); syncControls(); markPreset(name); schedule(); }
+// Reset always returns to Düne; the glass insert keeps its measurements.
+const RESET_PRESET="Düne";
+const undoBtn=document.getElementById("undo"), resetInfo=document.getElementById("resetInfo");
+let undoState=null, undoTimer=0;
+function clearUndo(){ undoState=null; undoBtn.hidden=true; resetInfo.textContent=""; clearTimeout(undoTimer); }
+document.getElementById("reset").addEventListener("click",()=>{
+  undoState=JSON.parse(JSON.stringify(P));
+  applyPreset(RESET_PRESET);
+  undoBtn.hidden=false; resetInfo.textContent=`Auf „${RESET_PRESET}“ zurückgesetzt`;
+  clearTimeout(undoTimer); undoTimer=setTimeout(clearUndo,20000);
+});
+undoBtn.addEventListener("click",()=>{
+  if(!undoState) return; P=undoState; selPt=-1; fitView(); syncControls(); markPreset(null); schedule(); clearUndo();
+  resetInfo.textContent="Einstellungen wiederhergestellt"; undoTimer=setTimeout(()=>resetInfo.textContent="",4000);
+});
+function markPreset(n){ presetBox.querySelectorAll(".chip").forEach(b=>b.setAttribute("aria-pressed", b.dataset.name===n?"true":"false")); }
+document.getElementById("reroll").addEventListener("click",()=>{
+  if(P.mode===3) rollExtreme(); else P.seed=Math.floor(Math.random()*100000);
+  markPreset(null); schedule();
+});
+// Extreme mode: random lobe-strength and rotation curves; the contour stays as drawn
+function rollExtreme(){
+  const rnd=(a,b)=>a+Math.random()*(b-a), round=v=>Math.round(v);
+  const n=3+Math.floor(Math.random()*4), amp=[[0,round(rnd(-8,8))]];
+  let sign=Math.random()<0.5?1:-1;
+  for(let k=1;k<=n;k++){ const t=k/(n+1)+rnd(-0.04,0.04);
+    // mostly alternate the sign so lobes swap places along the height, now and then pass through zero
+    if(Math.random()<0.7) sign=-sign;
+    amp.push([+t.toFixed(3), Math.random()<0.2?0:round(sign*rnd(15,50))]); }
+  amp.push([1,round(rnd(-8,8))]);
+  const m=1+Math.floor(Math.random()*3), rot=[[0,0]]; let acc=0;
+  for(let k=1;k<=m;k++){ acc+=rnd(-60,90); rot.push([k===m?1:+(k/m+rnd(-0.08,0.08)).toFixed(3), round(acc)]); }
+  P.ampPts=amp; P.rotPts=rot;
+  P.lobes=3+Math.floor(Math.random()*7); P.lshape=+rnd(0.8,1.8).toFixed(2);
+  selPt=-1; syncControls(); fitView(); drawProfile();
+}
+
+// ---------- Geometry ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function smooth(e0,e1,x){ if(e1<=e0) return x>=e1?1:0; const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0))); return t*t*(3-2*t); }
+// Monotone cubic (Fritsch–Carlson) through the profile points; a corner point gets one-sided tangents → sharp crease
+function profileFn(pts){
+  const n=pts.length, xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]), c=pts.map(q=>!!q[2]);
+  const d=[]; for(let i=0;i<n-1;i++) d.push((ys[i+1]-ys[i])/Math.max(1e-6,xs[i+1]-xs[i]));
+  const mL=new Array(n), mR=new Array(n);
+  mR[0]=mL[0]=d[0]; mL[n-1]=mR[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(c[i]){ mL[i]=d[i-1]; mR[i]=d[i]; }
+    else { const m= d[i-1]*d[i]<=0 ? 0 : (d[i-1]+d[i])/2; mL[i]=mR[i]=m; }
+  }
+  for(let i=0;i<n-1;i++){ // limiter per segment
+    if(d[i]===0){ mR[i]=0; mL[i+1]=0; continue; }
+    const a=mR[i]/d[i], b=mL[i+1]/d[i];
+    if(a<0) mR[i]=0; if(b<0) mL[i+1]=0;
+    const h=a*a+b*b; if(h>9){ const t=3/Math.sqrt(h); mR[i]=t*a*d[i]; mL[i+1]=t*b*d[i]; }
+  }
+  return function(x){ let i=0; while(i<n-2 && x>xs[i+1]) i++; const h=xs[i+1]-xs[i], t=Math.min(1,Math.max(0,(x-xs[i])/h)), t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i]+(t3-2*t2+t)*h*mR[i]+(-2*t3+3*t2)*ys[i+1]+(t3-t2)*h*mL[i+1]; };
+}
+
+// ---------- Cross-section (top view) ----------
+// A cross-section is a closed curve around the vase axis, given as radius over angle r(φ).
+// It is stored as points in one sector of an n-fold mirror symmetry: the sector runs from 0° to 180°/n
+// and each point is [a, r, corner] with a ∈ [0,1] across the sector and r relative to the contour
+// radius (1 = 100 %). The sector edges are mirror lines, so the curve meets them at a right angle
+// unless the end point is a corner (V-notch or tip).
+const SEC_TYPES=["Kreis","Oval","Acht","Vieleck","Tropfen","Eigene"];
+const SEC_SYMS={1:"Spiegeln (1 Achse)",2:"2 Achsen",3:"3-fach",4:"4-fach",5:"5-fach",6:"6-fach"};
+function sectorFn(pts){
+  const n=pts.length, xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]), c=pts.map(q=>!!q[2]);
+  const d=[]; for(let i=0;i<n-1;i++) d.push((ys[i+1]-ys[i])/Math.max(1e-6,xs[i+1]-xs[i]));
+  const mL=new Array(n), mR=new Array(n);
+  mL[0]=mR[0]= c[0]?d[0]:0; mL[n-1]=mR[n-1]= c[n-1]?d[n-2]:0;
+  for(let i=1;i<n-1;i++){
+    if(c[i]){ mL[i]=d[i-1]; mR[i]=d[i]; }
+    else { const m= d[i-1]*d[i]<=0 ? 0 : (d[i-1]+d[i])/2; mL[i]=mR[i]=m; }
+  }
+  for(let i=0;i<n-1;i++){
+    if(d[i]===0){ mR[i]=0; mL[i+1]=0; continue; }
+    const a=mR[i]/d[i], b=mL[i+1]/d[i];
+    if(a<0) mR[i]=0; if(b<0) mL[i+1]=0;
+    const h=a*a+b*b; if(h>9){ const t=3/Math.sqrt(h); mR[i]=t*a*d[i]; mL[i+1]=t*b*d[i]; }
+  }
+  return function(x){ let i=0; while(i<n-2 && x>xs[i+1]) i++; const h=xs[i+1]-xs[i], t=Math.min(1,Math.max(0,(x-xs[i])/h)), t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i]+(t3-2*t2+t)*h*mR[i]+(-2*t3+3*t2)*ys[i+1]+(t3-t2)*h*mL[i+1]; };
+}
+// r(φ) for a full turn from sector points and symmetry
+function sectionFn(sym,pts){
+  const S=Math.PI/sym, f=sectorFn(pts);
+  return function(phi){ let a=phi%(2*S); if(a<0) a+=2*S; if(a>S) a=2*S-a; return f(a/S); };
+}
+// --- shape generators: each returns {sym, pts} ---
+// samples an ordered polyline (counter-clockwise inside the sector) at the given sector fractions
+function polarSamples(poly,sector,fracs){
+  const ang=poly.map(q=>Math.atan2(q[1],q[0])), rad=poly.map(q=>Math.hypot(q[0],q[1]));
+  return fracs.map(f=>{ const a=f*sector; let i=0; while(i<ang.length-2 && ang[i+1]<a) i++;
+    const t=Math.min(1,Math.max(0,(a-ang[i])/((ang[i+1]-ang[i])||1e-9))); return [f, rad[i]+(rad[i+1]-rad[i])*t, 0]; });
+}
+function normalize(pts){ const m=Math.max(...pts.map(q=>q[1])); return pts.map(q=>[+q[0].toFixed(4),+(q[1]/m).toFixed(4),q[2]?1:0]); }
+function genOval(depth){ // ellipse, width 1, depth = minor/major
+  const b=Math.max(0.2,Math.min(1,depth)), fr=[0,1/6,2/6,3/6,4/6,5/6,1];
+  return {sym:2, pts:normalize(fr.map(f=>{ const p=f*Math.PI/2; return [f, b/Math.sqrt((b*Math.cos(p))**2+Math.sin(p)**2), 0]; }))};
+}
+function bez2(P0,P1,P2,t){ const u=1-t; return [u*u*P0[0]+2*u*t*P1[0]+t*t*P2[0], u*u*P0[1]+2*u*t*P1[1]+t*t*P2[1]]; }
+function lineX(P,d,Q,e){ // intersection of P+λd and Q+μe → [λ, μ]
+  const den=d[0]*e[1]-d[1]*e[0]; if(Math.abs(den)<1e-9) return null;
+  const qx=Q[0]-P[0], qy=Q[1]-P[1]; return [(qx*e[1]-qy*e[0])/den, (qx*d[1]-qy*d[0])/den];
+}
+// Bow-tie quadrant: end side, shoulder at 40° with r = 1, flank curving into a 45° V-notch at the waist
+function bowtieQuadrant(w){
+  const pm=40*Math.PI/180, r0=(1+Math.cos(pm))/2, C=[Math.cos(pm),Math.sin(pm)], t=[-Math.sin(pm),Math.cos(pm)];
+  const E=[r0,0], N=[0,w], g=45*Math.PI/180, u=[Math.cos(g),Math.sin(g)];
+  const k2=lineX(C,t,E,[0,1]), K2=[C[0]+k2[0]*t[0], C[1]+k2[0]*t[1]];
+  let k=lineX(C,t,N,u), K=k&&k[0]>0&&k[1]>0 ? [C[0]+k[0]*t[0], C[1]+k[0]*t[1]] : [C[0]*0.5, (C[1]+w)/2+0.1];
+  const poly=[]; for(let i=0;i<=40;i++) poly.push(bez2(E,K2,C,i/40)); for(let i=1;i<=80;i++) poly.push(bez2(C,K,N,i/80));
+  return poly;
+}
+// Cassini oval quadrant (round lobes, smooth waist) with waist ratio w (relative to the long half-axis)
+function cassiniR(w,phi){ const b2=(1+w*w)/(1-w*w), c=Math.cos(2*phi); return Math.sqrt(Math.max(0,c+Math.sqrt(c*c+b2*b2-1))); }
+function genEight(waist,form){ // form 0 = round lobes and waist, 1 = angular lobes with V-notch
+  const w=Math.max(0.15,Math.min(0.95,waist)), s=Math.max(0,Math.min(1,form));
+  const fr=[0,1/6,2/6,4/9,5/9,6/9,7/9,8/9,1];
+  const bow=polarSamples(bowtieQuadrant(w),Math.PI/2,fr);
+  const cmax=cassiniR(w,0);
+  const pts=fr.map((f,i)=>[f, (1-s)*cassiniR(w,f*Math.PI/2)/cmax + s*bow[i][1], 0]);
+  if(s>0.12) pts[pts.length-1][2]=1;              // V-notch at the waist
+  return {sym:2, pts:normalize(pts)};
+}
+// regular polygon with rounded corners; corner at 0°, edge middle at 180°/n
+function genPolygon(n,round){
+  n=Math.max(3,Math.min(8,Math.round(n))); const rho=Math.max(0.02,Math.min(0.95,round)), Rp=1-rho, S=Math.PI/n;
+  const poly=[], V=[Rp,0];
+  for(let i=0;i<=24;i++){ const a=S*i/24; poly.push([V[0]+rho*Math.cos(a), V[1]+rho*Math.sin(a)]); }
+  const A=poly[poly.length-1], dm=Rp*Math.cos(S)+rho, M=[dm*Math.cos(S), dm*Math.sin(S)];
+  for(let i=1;i<=24;i++){ const t=i/24; poly.push([A[0]+(M[0]-A[0])*t, A[1]+(M[1]-A[1])*t]); }
+  const fr=[0,0.1,0.22,0.36,0.52,0.7,0.85,1], pts=polarSamples(poly,S,fr);
+  if(rho<0.06) pts[0][2]=1;
+  return {sym:n, pts:normalize(pts)};
+}
+// drop: round back (circle around the axis) and a tip on +X; tip 0 = circle, 1 = long pointed tip
+function genDrop(tip){
+  const s=Math.max(0,Math.min(1,tip)), rho=1-0.55*s, L=1;
+  if(s<0.02) return {sym:1, pts:[[0,1,0],[0.5,1,0],[1,1,0]]};
+  const beta=Math.acos(rho/L), P=[rho*Math.cos(beta),rho*Math.sin(beta)], poly=[];
+  for(let i=0;i<=30;i++){ const t=i/30; poly.push([L+(P[0]-L)*t, P[1]*t]); }
+  for(let i=1;i<=60;i++){ const a=beta+(Math.PI-beta)*i/60; poly.push([rho*Math.cos(a), rho*Math.sin(a)]); }
+  const b=beta/Math.PI, fr=[0,b*0.3,b*0.6,b,b+(1-b)*0.35,b+(1-b)*0.7,1];
+  const pts=polarSamples(poly,Math.PI,fr); pts[0][2]=1;
+  return {sym:1, pts:normalize(pts)};
+}
+function genSection(p){
+  switch(p.secType){
+    case 1: return genOval(p.secDepth/100);
+    case 2: return genEight(p.secWaist/100, p.secForm/100);
+    case 3: return genPolygon(p.secCorners, p.secRound/100);
+    case 4: return genDrop(p.secTip/100);
+    case 5: return {sym:p.secSym, pts:p.secPts};
+    default: return {sym:2, pts:[[0,1,0],[1,1,0]]};
+  }
+}
+
+// Static cross-section for one build, one entry per column. Columns sit at equal steps along the
+// perimeter, so ribs keep their spacing on any shape; ribs are pushed out along the outline's normal.
+// For the circle this reduces exactly to the former evenly spaced angles with radial ribs.
+function prepareSection(p,cols){
+  const TH=new Float32Array(cols), CO=new Float32Array(cols), SI=new Float32Array(cols), S=new Float32Array(cols),
+        NX=new Float32Array(cols), NZ=new Float32Array(cols), U=new Float32Array(cols);
+  if(!p.secType){
+    for(let i=0;i<cols;i++){ const a=i/cols*Math.PI*2; TH[i]=a; U[i]=a; CO[i]=NX[i]=Math.cos(a); SI[i]=NZ[i]=Math.sin(a); S[i]=1; }
+    return {TH,CO,SI,S,NX,NZ,U,L:Math.PI*2,minS:1,maxS:1,circle:true};
+  }
+  const sh=genSection(p), f=sectionFn(sh.sym,sh.pts), M=4096, TW=Math.PI*2;
+  const acc=new Float64Array(M+1); let px=f(0), pz=0, minS=1e9, maxS=0;
+  for(let k=1;k<=M;k++){ const a=k/M*TW, r=f(a), x=r*Math.cos(a), z=r*Math.sin(a); acc[k]=acc[k-1]+Math.hypot(x-px,z-pz); px=x; pz=z; if(r<minS)minS=r; if(r>maxS)maxS=r; }
+  const L=acc[M], eps=1e-4; let k=0;
+  for(let i=0;i<cols;i++){
+    const target=i/cols*L; while(k<M-1 && acc[k+1]<target) k++;
+    const a=(k+(target-acc[k])/((acc[k+1]-acc[k])||1))/M*TW, r=f(a);
+    TH[i]=a; U[i]=i/cols*TW; S[i]=r; CO[i]=Math.cos(a); SI[i]=Math.sin(a);
+    // outward normal from the tangent of the outline (central difference; at a corner this is the bisector)
+    const r1=f(a+eps), r0=f(a-eps), tx=r1*Math.cos(a+eps)-r0*Math.cos(a-eps), tz=r1*Math.sin(a+eps)-r0*Math.sin(a-eps), tl=Math.hypot(tx,tz)||1;
+    NX[i]=tz/tl; NZ[i]=-tx/tl;
+  }
+  // radius and outline normal over the shape angle, for ribs that stay vertical while the shape turns
+  const TM=8192, TR=new Float32Array(TM+1), TNX=new Float32Array(TM+1), TNZ=new Float32Array(TM+1);
+  for(let q=0;q<=TM;q++){ const a=q/TM*TW, r=f(a), r1=f(a+eps), r0=f(a-eps);
+    const tx=r1*Math.cos(a+eps)-r0*Math.cos(a-eps), tz=r1*Math.sin(a+eps)-r0*Math.sin(a-eps), tl=Math.hypot(tx,tz)||1;
+    TR[q]=r; TNX[q]=tz/tl; TNZ[q]=-tx/tl; }
+  return {TH,CO,SI,S,NX,NZ,U,L,minS,maxS,circle:false,TM,TR,TNX,TNZ};
+}
+
+// returns {pos: Float32Array (rows*cols*3, Y-up, mm), cols, rows, maxR, footR, pushed, innerD, shapeL, W, D}
+function buildSurface(p, cols, rows){
+  const sc=p.scale/100, prof0=profileFn(p.pts), prof=t=>prof0(t)*sc;
+  let pMin=1e9,pMax=0; for(let k=0;k<=100;k++){ const v=prof(k/100); if(v<pMin)pMin=v; if(v>pMax)pMax=v; }
+  const rnd=mulberry(p.seed||1);
+  const terms=[]; for(let i=0;i<4;i++) terms.push({m:1+Math.floor(rnd()*p.lobes), ph:rnd()*Math.PI*2, s:(rnd()*2-1)*p.flow, w:0.5+rnd()*0.5});
+  const W=terms.reduce((a,t)=>a+t.w,0);
+  const pa=rnd()*6.28, pb=rnd()*6.28;
+  // targeted dents: evenly spaced around, small seeded jitter
+  const K=Math.round(p.lobes), dents=[], ph0=rnd()*6.28;
+  for(let k=0;k<K;k++) dents.push({th:ph0+2*Math.PI*k/K+(rnd()-0.5)*0.5/K, t:p.dheight/100+(rnd()-0.5)*0.12*(K>1?1:0), w:0.8+rnd()*0.4});
+  const sT=p.dsize*1.1, sZ=p.dsize*0.75;
+  const TWO_PI=Math.PI*2;
+  // Extreme mode: lobe strength (signed %) and rotation (°) follow their own curves over the height
+  const ampF= p.mode===3 ? profileFn(p.ampPts) : null, rotF= p.mode===3 ? profileFn(p.rotPts) : null;
+  let rowRot=0, rowFlip=0;
+  // lobe cross-section: shape > 1 makes narrow pointed petals with wide valleys, < 1 wide flat petals
+  const lobe=(c)=> p.lshape===1 ? c : 2*Math.pow(0.5+0.5*c,p.lshape)-1;
+  function dentField(th,t){
+    if(p.mode===3) return lobe(Math.cos(K*(th+rowRot+p.ltwist*TWO_PI*t)+rowFlip));
+    if(p.mode===2) return lobe(Math.cos(K*(th+p.ltwist*TWO_PI*t)));
+    if(p.mode===1){ let d=0; for(const q of dents){ let a=th-q.th; a-=TWO_PI*Math.round(a/TWO_PI); const z=t-q.t; d-=q.w*Math.exp(-(a*a)/(sT*sT)-(z*z)/(sZ*sZ)); } return d; }
+    let n=0; for(const q of terms) n+=q.w*Math.cos(q.m*th+q.ph+q.s*TWO_PI*t); return n/W;
+  }
+  const N=Math.round(p.ribs), bandT=p.band/p.height;
+  const sec=prepareSection(p,cols), {TH,CO,SI,S,NX,NZ,U}=sec;
+  const twistT= sec.circle ? 0 : p.secTwist*TWO_PI;   // the cross-section turns by this angle from foot to lip
+  // Rib course: "with the shape" keeps columns (and ribs) evenly spaced along the outline, turning with it.
+  // "Vertical" fixes columns at even angles in the world, so ribs stand straight while the shape turns beneath them.
+  const vertical= !sec.circle && p.ribAlign===1;
+  let PA, PC, PS;
+  if(vertical){ PA=new Float32Array(cols); PC=new Float32Array(cols); PS=new Float32Array(cols);
+    for(let i=0;i<cols;i++){ PA[i]=i/cols*TWO_PI; PC[i]=Math.cos(PA[i]); PS[i]=Math.sin(PA[i]); } }
+  // Diamond pattern: two families of N helical lines winding in opposite directions. Their angular split
+  // phi(t) grows with height; one diamond row = phi advancing by PI/N. Below the "straight" zone phi stays 0,
+  // so both families coincide and read as straight vertical grooves.
+  const H=new Float32Array(rows);
+  if(p.pattern===1){ const s=p.straight/100; let acc=0;
+    for(let j=1;j<rows;j++){ const t=(j-0.5)/(rows-1); acc+= s>0 ? smooth(s*0.5,s,t) : 1; H[j]=acc; }
+    if(acc>0) for(let j=0;j<rows;j++) H[j]/=acc; }
+  const phiScale= N>0 ? Math.PI/N*p.drows : 0;
+  const X=new Float32Array(rows*cols), Z=new Float32Array(rows*cols), rowMin=new Float32Array(rows);
+  for(let j=0;j<rows;j++){
+    const t=j/(rows-1);
+    const base=prof(t)+p.waveAmt*Math.sin(TWO_PI*p.waves*t)*smooth(0,0.1,t)*smooth(0,0.1,1-t);
+    // lobes keep the cross-section all the way up; dents fade towards foot and lip
+    let env;
+    if(p.mode===2){ const w=pMax>pMin?(base-pMin)/(pMax-pMin):1; env=smooth(0,0.04,t)*((1-p.lfocus)+p.lfocus*w*w*w); }
+    else env=smooth(0,0.14,t)*smooth(0,0.14,1-t);
+    let kAmt;   // radial lobe/dent amount for this row as a fraction of the base radius
+    // negative strength = lobes shifted by half a lobe (they sit between the ones below), shape kept
+    if(p.mode===3){ const a=ampF(t)/100; kAmt=Math.abs(a); rowFlip=a<0?Math.PI:0; rowRot=rotF(t)*Math.PI/180; }
+    else kAmt=(p.dent/100)*env;
+    const fade= bandT>0 ? smooth(0,bandT,t)*smooth(0,bandT,1-t) : 1;
+    const off= N>0 ? p.twist*2*Math.PI*t + p.wander*(2*Math.PI/N)*(Math.sin(2*Math.PI*1.3*t+pa)+0.6*Math.sin(2*Math.PI*2.9*t+pb)) : 0;
+    const psi=twistT*t, cp=Math.cos(psi), sp=Math.sin(psi);
+    let mn=1e9;
+    for(let i=0;i<cols;i++){
+      let wth, cw, sw, Si, nx, nz, Ui;                      // wth: angle in the world, for dents and lobes
+      if(vertical){
+        wth=PA[i]; cw=PC[i]; sw=PS[i]; Ui=wth;
+        let u=(wth-psi)/TWO_PI; u-=Math.floor(u); const q=u*sec.TM, k=q|0, fr=q-k;
+        Si=sec.TR[k]+(sec.TR[k+1]-sec.TR[k])*fr;
+        const ax=sec.TNX[k]+(sec.TNX[k+1]-sec.TNX[k])*fr, az=sec.TNZ[k]+(sec.TNZ[k+1]-sec.TNZ[k])*fr, al=Math.hypot(ax,az)||1;
+        nx=(ax*cp-az*sp)/al; nz=(az*cp+ax*sp)/al;
+      } else {
+        wth=TH[i]+psi; cw=CO[i]*cp-SI[i]*sp; sw=SI[i]*cp+CO[i]*sp; Si=S[i]; Ui=U[i];
+        nx=NX[i]*cp-NZ[i]*sp; nz=NZ[i]*cp+NX[i]*sp;
+      }
+      const d=kAmt!==0?dentField(wth,t):0;
+      let r=base*Si*(1+kAmt*d), rib=0;
+      if(N>0 && p.depth>0){
+        const bend=p.follow*d*kAmt*1.2; // ribs drift sideways where the wall dips
+        let v;
+        if(p.pattern===1){
+          const a=N*(Ui+off+bend)/TWO_PI, ph=phiScale*H[j]*N/TWO_PI;
+          const u1=a+ph, u2=a-ph, d1=Math.abs(u1-Math.round(u1)), d2=Math.abs(u2-Math.round(u2));
+          v=Math.pow(Math.min(d1,d2)*2,p.sharp);   // 0 on a line, 1 at the diamond centre
+        } else { v=0.5+0.5*Math.cos(N*(Ui+off+bend)); v=Math.pow(v,p.sharp); }
+        rib=p.depth*fade*(v-0.5); }
+      let x, z;
+      if(sec.circle){ r+=rib; if(r<2) r=2; x=r*cw; z=r*sw; }
+      else { if(r<2) r=2; x=r*cw+rib*nx; z=r*sw+rib*nz; }
+      X[j*cols+i]=x; Z[j*cols+i]=z; const rr=Math.hypot(x,z); if(rr<mn) mn=rr;
+    }
+    rowMin[j]=mn;
+  }
+  // Glass insert: the inner wall (outer surface minus wall thickness) must clear the cylinder over the whole height,
+  // otherwise the glass can't be pushed in from the top. Missing room is added as a smooth radial offset per row.
+  let pushed=0;
+  if(p.cylOn){
+    const need=p.cylD/2+p.gap+p.wall, def=new Float32Array(rows);
+    for(let j=0;j<rows;j++) def[j]=Math.max(0,need-rowMin[j]);
+    const k=Math.max(2,Math.round(rows*0.04));
+    const dil=new Float32Array(rows);   // dilate, then blur with the same radius → stays ≥ deficit
+    for(let j=0;j<rows;j++){ let m=0; for(let q=Math.max(0,j-k);q<=Math.min(rows-1,j+k);q++) if(def[q]>m) m=def[q]; dil[j]=m; }
+    const off=new Float32Array(rows);
+    for(let j=0;j<rows;j++){ let s=0,w=0; for(let q=-k;q<=k;q++){ const jj=j+q; if(jj<0||jj>=rows) continue; const ww=1-Math.abs(q)/(k+1); s+=dil[jj]*ww; w+=ww; } off[j]=Math.max(def[j],s/w); }
+    for(let j=0;j<rows;j++){ if(off[j]>pushed) pushed=off[j]; if(off[j]>0){
+      for(let i=0;i<cols;i++){ const q=j*cols+i, rr=Math.hypot(X[q],Z[q])||1, f=(rr+off[j])/rr; X[q]*=f; Z[q]*=f; }
+      rowMin[j]+=off[j]; } }
+  }
+  const pos=new Float32Array(rows*cols*3); let maxR=0, x0=1e9, x1=-1e9, z0=1e9, z1=-1e9;
+  for(let j=0;j<rows;j++){ const y=j/(rows-1)*p.height;
+    for(let i=0;i<cols;i++){ const q=j*cols+i, x=X[q], z=Z[q], r=Math.hypot(x,z); if(r>maxR) maxR=r;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(z<z0)z0=z; if(z>z1)z1=z;
+      const k=q*3; pos[k]=x; pos[k+1]=y; pos[k+2]=z; } }
+  let innerMin=1e9; for(let j=0;j<rows;j++) if(rowMin[j]<innerMin) innerMin=rowMin[j];
+  return {pos,cols,rows,maxR,footR:rowMin[0],pushed,innerD:2*(innerMin-(p.wall||0.6)),shapeL:sec.L,W:x1-x0,D:z1-z0};
+}
+
+// ---------- Profile editor ----------
+// One canvas edits three curves over the height: the contour (radius, drawn mirrored as a silhouette),
+// and in Extreme mode the lobe strength (signed %) and the lobe rotation (degrees).
+const pc=document.getElementById("prof"), pctx=pc.getContext("2d");
+let selPt=-1, viewR=150, viewH=250, viewRot=90, pdrag=null, activeCh="pts";
+const CH={
+  pts:   {min:5,   max:250, mirror:true},
+  ampPts:{min:-100,max:100, unit:"%", label:"Stärke"},
+  rotPts:{min:-360,max:360, unit:"°", label:"Drehung"},
+};
+const chTabs=document.getElementById("chtabs");
+chTabs.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>setChannel(b.dataset.ch)));
+document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>{
+  setChannel(b.dataset.goto);
+  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  chTabs.scrollIntoView({behavior:reduce?"auto":"smooth",block:"center"});
+}));
+function setChannel(ch){ activeCh=ch; selPt=-1; chTabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.ch===ch?"true":"false")); fitView(); drawProfile(); }
+function curPts(){ return P[activeCh]; }
+function glassR(){ return P.cylOn ? P.cylD/2+P.gap+P.wall : 0; }
+function fitView(){
+  viewR=Math.max(60,Math.max(...P.pts.map(q=>q[1]))*P.scale/100*1.25*Math.max(1,secInfo().maxS), glassR()*1.15);
+  viewH=Math.max(P.height, P.cylOn?P.cylH:0);
+  viewRot=Math.max(90, Math.max(...P.rotPts.map(q=>Math.abs(q[1])))*1.3);
+}
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#888"; }
+function pGeom(){ const w=pc.clientWidth, h=pc.clientHeight, pad=14;
+  const s=Math.min((w/2-pad)/viewR,(h-2*pad)/viewH);
+  const span= activeCh==="ampPts" ? 100 : viewRot;
+  return {w,h,s,cx:w/2,by:h/2+viewH*s/2, sx:(w/2-pad-6)/span}; }
+function valX(v,g){ return CH[activeCh].mirror ? g.cx+v*P.scale/100*g.s : g.cx+v*g.sx; }
+function toScreen(q,g){ return [valX(q[1],g), g.by-q[0]*P.height*g.s]; }
+function fromScreen(x,y,g){ const t=(g.by-y)/(P.height*g.s);
+  return [t, CH[activeCh].mirror ? Math.abs(x-g.cx)/g.s/(P.scale/100) : (x-g.cx)/g.sx]; }
+function drawProfile(){
+  const dpr=Math.min(window.devicePixelRatio||1,2), w=pc.clientWidth, h=pc.clientHeight; if(!w||!h) return;
+  if(pc.width!==Math.round(w*dpr)){ pc.width=Math.round(w*dpr); pc.height=Math.round(h*dpr); }
+  pctx.setTransform(dpr,0,0,dpr,0,0); pctx.clearRect(0,0,w,h);
+  const g=pGeom(), pts=curPts(), f=profileFn(pts), fg=css("--fg"), mu=css("--muted"), ac=css("--accent"), ln=css("--line");
+  const top=g.by-P.height*g.s;
+  // centre axis = radius 0, strength 0 or rotation 0
+  pctx.strokeStyle=ln; pctx.lineWidth=1; pctx.setLineDash([4,4]);
+  pctx.beginPath(); pctx.moveTo(g.cx,g.by+6); pctx.lineTo(g.cx,top-6); pctx.stroke(); pctx.setLineDash([]);
+  const curve=(sign)=>{ for(let k=0;k<=200;k++){ const t=k/200; const [x,y]=toScreen([t,sign*f(t)],g); k?pctx.lineTo(x,y):pctx.moveTo(x,y); } };
+  const curveScaled=(m)=>{ for(let k=0;k<=200;k++){ const t=k/200; const [x,y]=toScreen([t,m*f(t)],g); k?pctx.lineTo(x,y):pctx.moveTo(x,y); } };
+  pctx.beginPath();
+  if(CH[activeCh].mirror){ curve(1); for(let k=200;k>=0;k--){ const t=k/200; const [x,y]=toScreen([t,-f(t)],g); pctx.lineTo(x,y); } }
+  else { curve(1); pctx.lineTo(g.cx,top); pctx.lineTo(g.cx,g.by); }
+  pctx.closePath(); pctx.fillStyle=ln; pctx.globalAlpha=0.55; pctx.fill(); pctx.globalAlpha=1;
+  pctx.strokeStyle=fg; pctx.lineWidth=1.6; pctx.beginPath(); curve(1); pctx.stroke();
+  if(activeCh==="pts" && P.secType){ const si=secInfo(), lines=[si.minS,si.maxS].filter(m=>Math.abs(m-1)>0.01);
+    if(lines.length){ pctx.save(); pctx.setLineDash([3,3]); pctx.strokeStyle=mu; pctx.lineWidth=1.2;
+      for(const m of lines) for(const sg of [1,-1]){ pctx.beginPath(); curveScaled(sg*m); pctx.stroke(); }
+      pctx.restore(); pctx.fillStyle=mu; pctx.font="11px "+css("--f-mono"); 
+      pctx.fillText(lines.length===2?"gestrichelt: schmalste und breiteste Seite":(si.minS<0.99?"gestrichelt: schmalste Seite":"gestrichelt: breiteste Seite"),8,g.by-P.height*g.s+20); } }
+  if(activeCh==="pts" && P.cylOn){ const gr=glassR()*g.s, gh=P.cylH*g.s;
+    pctx.save(); pctx.strokeStyle=css("--glass"); pctx.fillStyle=css("--glass"); pctx.globalAlpha=0.18;
+    pctx.fillRect(g.cx-gr,g.by-gh,gr*2,gh); pctx.globalAlpha=1; pctx.setLineDash([5,4]); pctx.lineWidth=1.4;
+    pctx.strokeRect(g.cx-gr,g.by-gh,gr*2,gh); pctx.restore(); }
+  pts.forEach((q,i)=>{ const [x,y]=toScreen(q,g); pctx.beginPath();
+    if(q[2]){ pctx.rect(x-6,y-6,12,12); } else pctx.arc(x,y,6,0,Math.PI*2);
+    pctx.fillStyle= i===selPt?ac:css("--panel"); pctx.fill(); pctx.strokeStyle= i===selPt?ac:fg; pctx.lineWidth=1.6; pctx.stroke(); });
+  pctx.fillStyle=mu; pctx.font="11px "+css("--f-mono");
+  pctx.fillText(`${Math.round(P.height)} mm`,8,top+4); pctx.fillText("0",8,g.by);
+  if(!CH[activeCh].mirror){ const span=activeCh==="ampPts"?100:Math.round(viewRot), u=CH[activeCh].unit;
+    pctx.textAlign="center"; pctx.fillText(`−${span}${u}`,valX(-span,g)+14,g.by+12>h-2?h-3:g.by+12);
+    pctx.fillText(`+${span}${u}`,valX(span,g)-14,g.by+12>h-2?h-3:g.by+12); pctx.textAlign="start"; }
+  updatePtUI();
+}
+function updatePtUI(){
+  const info=document.getElementById("ptinfo"), bc=document.getElementById("ptCorner"), bd=document.getElementById("ptDel"), pts=curPts();
+  if(selPt<0 || selPt>=pts.length){ selPt=-1; info.textContent="Punkt ziehen · freie Stelle antippen = neuer Punkt"; bc.disabled=bd.disabled=true; bc.setAttribute("aria-pressed","false"); return; }
+  const q=pts[selPt], end= selPt===0||selPt===pts.length-1, c=CH[activeCh];
+  info.textContent= c.mirror ? `Höhe ${(q[0]*P.height).toFixed(0)} mm · Ø ${(q[1]*2*P.scale/100).toFixed(0)} mm`
+                             : `Höhe ${(q[0]*P.height).toFixed(0)} mm · ${c.label} ${q[1].toFixed(0)} ${c.unit}`;
+  bc.disabled=end; bd.disabled=end||pts.length<=(c.mirror?3:2); bc.setAttribute("aria-pressed",q[2]?"true":"false");
+}
+function clampVal(v){ const c=CH[activeCh]; return Math.max(c.min,Math.min(c.max,v)); }
+function hitPt(x,y,g){ let best=-1,bd=16*16; curPts().forEach((q,i)=>{ const [px,py]=toScreen(q,g); const d=(px-x)**2+(py-y)**2; if(d<bd){bd=d;best=i;} }); return best; }
+pc.addEventListener("pointerdown",e=>{
+  const r=pc.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top, g=pGeom(), pts=curPts();
+  let i=hitPt(x,y,g);
+  if(i<0){ let [t,val]=fromScreen(x,y,g); if(t<=0.01||t>=0.99) { selPt=-1; drawProfile(); return; }
+    let k=1; while(k<pts.length && pts[k][0]<t) k++;
+    pts.splice(k,0,[t,clampVal(val),0]); i=k; markPreset(null); schedule(); }
+  selPt=i; pdrag={g}; pc.setPointerCapture(e.pointerId); drawProfile();
+});
+pc.addEventListener("pointermove",e=>{
+  if(!pdrag) return; const r=pc.getBoundingClientRect(); let [t,val]=fromScreen(e.clientX-r.left,e.clientY-r.top,pdrag.g);
+  const pts=curPts(), q=pts[selPt], n=pts.length;
+  if(selPt===0) t=0; else if(selPt===n-1) t=1; else t=Math.min(pts[selPt+1][0]-0.02,Math.max(pts[selPt-1][0]+0.02,t));
+  q[0]=t; q[1]=clampVal(CH[activeCh].mirror?val:Math.round(val)); markPreset(null); schedule(); drawProfile();
+});
+function endPDrag(){ if(pdrag){ pdrag=null; fitView(); drawProfile(); } }
+pc.addEventListener("pointerup",endPDrag); pc.addEventListener("pointercancel",endPDrag);
+document.getElementById("ptCorner").addEventListener("click",()=>{ const pts=curPts(); if(selPt>0&&selPt<pts.length-1){ pts[selPt][2]=pts[selPt][2]?0:1; markPreset(null); schedule(); drawProfile(); } });
+document.getElementById("ptDel").addEventListener("click",()=>{ const pts=curPts(); if(selPt>0&&selPt<pts.length-1&&pts.length>(CH[activeCh].mirror?3:2)){ pts.splice(selPt,1); selPt=-1; markPreset(null); schedule(); drawProfile(); } });
+new ResizeObserver(drawProfile).observe(pc);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",drawProfile);
+
+// ---------- Cross-section editor (top view) ----------
+// Shows the outline from above with its mirror lines. Points live in the highlighted sector; the rest
+// follows by symmetry. Dragging a point of a ready-made shape turns it into an own shape ("Eigene")
+// with exactly the same outline, so nothing jumps.
+const scv=document.getElementById("sec"), sctx=scv.getContext("2d");
+const secTypeSel=document.getElementById("p-secType"), secSymSel=document.getElementById("p-secSym");
+secTypeSel.innerHTML=SEC_TYPES.map((n,i)=>`<option value="${i}">${n}</option>`).join("");
+secSymSel.innerHTML=Object.entries(SEC_SYMS).map(([k,n])=>`<option value="${k}">${n}</option>`).join("");
+const R_MAX=1.3;
+let secPt=-1, secDrag=null;
+let secCacheKey="", secCache=null;
+// outline of the current cross-section, cached: {sym, pts, f, minS, maxS}
+function secInfo(){
+  const g=genSection(P), key=JSON.stringify([P.secType,g.sym,g.pts]);
+  if(key!==secCacheKey){ const f=sectionFn(g.sym,g.pts); let mn=1e9,mx=0,mds=1e9;
+    for(let k=0;k<720;k++){ const a=k/720*Math.PI*2, r=f(a); if(r<mn)mn=r; if(r>mx)mx=r;
+      const a1=(k+1)/720*Math.PI*2, r1=f(a1);  // chord length per radian: also right at corners
+      mds=Math.min(mds,Math.hypot(r1*Math.cos(a1)-r*Math.cos(a), r1*Math.sin(a1)-r*Math.sin(a))/(Math.PI*2/720)); }
+    secCacheKey=key; secCache={sym:g.sym, pts:g.pts, f, minS:P.secType?mn:1, maxS:P.secType?mx:1, minDs:P.secType?mds:1}; }
+  return secCache;
+}
+function toCustom(){ // keep the outline, make its points editable
+  if(P.secType===5) return; const g=genSection(P);
+  P.secSym=g.sym; P.secPts=g.pts.map(q=>q.slice()); P.secType=5; markPreset(null); syncControls();
+}
+secTypeSel.addEventListener("change",()=>{ const t=+secTypeSel.value; if(t===5) toCustom(); else P.secType=t;
+  secPt=-1; markPreset(null); applyModeVisibility(); schedule(); });
+secSymSel.addEventListener("change",()=>{ resampleSym(+secSymSel.value); secPt=-1; markPreset(null); schedule(); });
+// New symmetry: sample the current outline inside the new sector; corners are carried over where they land
+function resampleSym(n){
+  const old=secInfo(), So=Math.PI/old.sym, Sn=Math.PI/n, k=n===1?9:7;
+  let fr=[]; for(let i=0;i<k;i++) fr.push(i/(k-1));
+  const corners=[];
+  old.pts.forEach(q=>{ if(!q[2]) return;
+    for(let j=0;j<old.sym;j++) for(const sg of [1,-1]){
+      let a=(sg*q[0]*So+j*2*So)%(2*Sn); if(a<0) a+=2*Sn; if(a>Sn) a=2*Sn-a;
+      const c=a/Sn; if(!corners.some(x=>Math.abs(x-c)<0.02)) corners.push(c); } });
+  fr=fr.filter(x=>!corners.some(c=>Math.abs(c-x)<0.5/(k-1)||(x===0&&c<0.02)||(x===1&&c>0.98)));
+  if(!corners.some(c=>c<0.02)) fr.push(0); if(!corners.some(c=>c>0.98)) fr.push(1);
+  const all=[...new Set([...fr,...corners])].sort((a,b)=>a-b);
+  P.secPts=all.map(c=>[+c.toFixed(4), +old.f(c*Sn).toFixed(4), corners.some(x=>Math.abs(x-c)<1e-9)?1:0]);
+  P.secPts[0][0]=0; P.secPts[P.secPts.length-1][0]=1;
+  P.secSym=n; P.secType=5; syncControls();
+}
+function secGeom(){ const w=scv.clientWidth, h=scv.clientHeight; return {w,h,cx:w/2,cy:h/2,R:(Math.min(w,h)/2-14)/R_MAX}; }
+function secXY(phi,r,g){ return [g.cx+r*Math.cos(phi)*g.R, g.cy-r*Math.sin(phi)*g.R]; }
+function minContour(){ const f=profileFn(P.pts); let m=1e9; for(let k=0;k<=100;k++) m=Math.min(m,f(k/100)); return m*P.scale/100; }
+function drawSection(){
+  const dpr=Math.min(window.devicePixelRatio||1,2), w=scv.clientWidth, h=scv.clientHeight; if(!w||!h) return;
+  if(scv.width!==Math.round(w*dpr)){ scv.width=Math.round(w*dpr); scv.height=Math.round(h*dpr); }
+  sctx.setTransform(dpr,0,0,dpr,0,0); sctx.clearRect(0,0,w,h);
+  const g=secGeom(), si=secInfo(), S=Math.PI/si.sym, fg=css("--fg"), mu=css("--muted"), ac=css("--accent"), ln=css("--line");
+  // editable sector
+  sctx.save(); sctx.beginPath(); sctx.moveTo(g.cx,g.cy); sctx.arc(g.cx,g.cy,g.R*R_MAX,0,-S,true); sctx.closePath();
+  sctx.fillStyle=ac; sctx.globalAlpha=0.08; sctx.fill(); sctx.restore();
+  // mirror lines
+  sctx.strokeStyle=ln; sctx.lineWidth=1; sctx.setLineDash([4,4]);
+  for(let j=0;j<2*si.sym;j++){ const [x,y]=secXY(j*S,R_MAX,g); sctx.beginPath(); sctx.moveTo(g.cx,g.cy); sctx.lineTo(x,y); sctx.stroke(); }
+  // 100 % = contour radius
+  sctx.beginPath(); sctx.arc(g.cx,g.cy,g.R,0,Math.PI*2); sctx.stroke(); sctx.setLineDash([]);
+  sctx.fillStyle=mu; sctx.font="11px "+css("--f-mono"); sctx.fillText("100 %",g.cx+g.R*0.72+4,g.cy+g.R*0.72+14);
+  // glass at the narrowest height, relative to the contour there
+  if(P.cylOn){ const rg=glassR()/Math.max(1,minContour());
+    sctx.save(); sctx.strokeStyle=css("--glass"); sctx.fillStyle=css("--glass"); sctx.globalAlpha=0.16;
+    sctx.beginPath(); sctx.arc(g.cx,g.cy,Math.min(rg,R_MAX)*g.R,0,Math.PI*2); sctx.fill(); sctx.globalAlpha=1; sctx.setLineDash([5,4]); sctx.lineWidth=1.4; sctx.stroke(); sctx.restore(); }
+  // outline
+  sctx.beginPath();
+  for(let k=0;k<=360;k++){ const a=k/360*Math.PI*2, [x,y]=secXY(a,Math.min(si.f(a),R_MAX),g); k?sctx.lineTo(x,y):sctx.moveTo(x,y); }
+  sctx.closePath(); sctx.fillStyle=ln; sctx.globalAlpha=0.55; sctx.fill(); sctx.globalAlpha=1; sctx.strokeStyle=fg; sctx.lineWidth=1.6; sctx.stroke();
+  // points of the editable sector
+  si.pts.forEach((q,i)=>{ const [x,y]=secXY(q[0]*S,Math.min(q[1],R_MAX),g); sctx.beginPath();
+    if(q[2]) sctx.rect(x-6,y-6,12,12); else sctx.arc(x,y,6,0,Math.PI*2);
+    sctx.fillStyle= i===secPt?ac:css("--panel"); sctx.fill(); sctx.strokeStyle= i===secPt?ac:fg; sctx.lineWidth=1.6; sctx.stroke(); });
+  updateSecUI(si);
+}
+function updateSecUI(si){
+  const info=document.getElementById("secInfo"), bc=document.getElementById("secCorner"), bd=document.getElementById("secDel");
+  if(secPt<0 || secPt>=si.pts.length){ secPt=-1;
+    info.textContent= P.secType===5 ? "Punkt ziehen · freie Stelle antippen = neuer Punkt" : "Punkt ziehen = als eigene Form weiterbearbeiten";
+    bc.disabled=bd.disabled=true; bc.setAttribute("aria-pressed","false"); return; }
+  const q=si.pts[secPt], end= secPt===0||secPt===si.pts.length-1;
+  info.textContent=`Winkel ${(q[0]*180/si.sym).toFixed(0)}° · ${Math.round(q[1]*100)} %`;
+  bc.disabled=false; bd.disabled=end||si.pts.length<=2; bc.setAttribute("aria-pressed",q[2]?"true":"false");
+}
+// pointer → [sector fraction, radius], folded into the editable sector by the symmetry
+function secFromScreen(x,y,g,sym){
+  const dx=(x-g.cx)/g.R, dy=(g.cy-y)/g.R, S=Math.PI/sym; let a=Math.atan2(dy,dx)%(2*S); if(a<0) a+=2*S; if(a>S) a=2*S-a;
+  return [a/S, Math.hypot(dx,dy)];
+}
+function secHit(x,y,g){ const si=secInfo(), S=Math.PI/si.sym; let best=-1,bd=16*16;
+  si.pts.forEach((q,i)=>{ const [px,py]=secXY(q[0]*S,Math.min(q[1],R_MAX),g); const d=(px-x)**2+(py-y)**2; if(d<bd){bd=d;best=i;} }); return best; }
+scv.addEventListener("pointerdown",e=>{
+  const r=scv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top, g=secGeom();
+  let i=secHit(x,y,g), add=null;
+  if(i<0){ add=secFromScreen(x,y,g,secInfo().sym); if(add[0]<=0.01||add[0]>=0.99){ secPt=-1; drawSection(); return; } }
+  toCustom();
+  if(add){ const pts=P.secPts; let k=1; while(k<pts.length && pts[k][0]<add[0]) k++;
+    pts.splice(k,0,[+add[0].toFixed(4),+Math.max(0.1,Math.min(R_MAX,add[1])).toFixed(4),0]); i=k; markPreset(null); schedule(); }
+  secPt=i; secDrag={g}; scv.setPointerCapture(e.pointerId); drawSection();
+});
+scv.addEventListener("pointermove",e=>{
+  if(!secDrag) return; const r=scv.getBoundingClientRect(); let [a,rad]=secFromScreen(e.clientX-r.left,e.clientY-r.top,secDrag.g,P.secSym);
+  const pts=P.secPts, q=pts[secPt], n=pts.length;
+  if(secPt===0) a=0; else if(secPt===n-1) a=1; else a=Math.min(pts[secPt+1][0]-0.02,Math.max(pts[secPt-1][0]+0.02,a));
+  q[0]=+a.toFixed(4); q[1]=+Math.max(0.1,Math.min(R_MAX,rad)).toFixed(4); markPreset(null); schedule(); drawSection();
+});
+function endSecDrag(){ if(secDrag){ secDrag=null; drawSection(); drawProfile(); } }
+scv.addEventListener("pointerup",endSecDrag); scv.addEventListener("pointercancel",endSecDrag);
+document.getElementById("secCorner").addEventListener("click",()=>{ if(secPt<0) return; toCustom(); const q=P.secPts[secPt]; q[2]=q[2]?0:1; markPreset(null); schedule(); });
+document.getElementById("secDel").addEventListener("click",()=>{ const pts=P.secPts; if(P.secType===5 && secPt>0 && secPt<pts.length-1 && pts.length>2){ pts.splice(secPt,1); secPt=-1; markPreset(null); schedule(); } });
+new ResizeObserver(drawSection).observe(scv);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",drawSection);
+
+// ---------- Three.js preview ----------
+const stage=document.getElementById("stage");
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+stage.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,1,1,5000);
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f8c,0.55));
+const key=new THREE.DirectionalLight(0xffffff,0.85); key.position.set(-300,400,350); scene.add(key);
+const rim=new THREE.DirectionalLight(0xffffff,0.35); rim.position.set(400,200,-300); scene.add(rim);
+const mat=new THREE.MeshStandardMaterial({color:0xE4E1DA,roughness:0.62,metalness:0});
+const geo=new THREE.BufferGeometry();
+const mesh=new THREE.Mesh(geo,mat); scene.add(mesh);
+const group=new THREE.Group(); scene.add(group); group.add(mesh);
+const glassMat=new THREE.MeshStandardMaterial({color:0x9fd0f0,transparent:true,opacity:0.35,roughness:0.1,metalness:0,depthWrite:false});
+const glassMesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,64,1,true),glassMat); glassMesh.renderOrder=2; group.add(glassMesh);
+// vase drawn slightly see-through while the glass is shown, so the insert is visible inside
+function updateGlass(){
+  glassMesh.visible=!!P.cylOn;
+  mat.transparent=!!P.cylOn; mat.opacity=P.cylOn?0.55:1; mat.depthWrite=!P.cylOn; mat.needsUpdate=true;
+  if(!P.cylOn) return;
+  glassMesh.scale.set(P.cylD/2,P.cylH,P.cylD/2); glassMesh.position.y=-P.height/2+P.cylH/2;
+}
+
+let rotY=-0.5, tilt=0.18, dist=1, autoSpin=true, lastCols=-1, lastRows=-1;
+// narrow grooves (sharpness < 0.6) and world-fixed columns on a turning shape need a finer grid
+function colFactor(p){ return p.sharp<0.6 ? 2 : 1; }
+function verticalRibs(p){ return p.secType!==0 && p.ribAlign===1; }
+function previewCols(){ return Math.max(verticalRibs(P)?1080:360, Math.min(1500, Math.round(P.ribs)*6*colFactor(P))); }
+function rebuild(){
+  const cols=previewCols(), rows= P.pattern===1 ? Math.max(150,Math.min(600,Math.round(P.drows*24))) : 150;
+  const s=buildSurface(P,cols,rows);
+  const vcount=rows*cols+2;
+  const all=new Float32Array(vcount*3); all.set(s.pos);
+  const bi=rows*cols, ti=bi+1;
+  all[bi*3+1]=0; all[ti*3+1]=P.height;
+  // replace (not reuse) normals: computeVertexNormals keeps a stale, too-short buffer when the vertex count grows
+  const oldPos=geo.getAttribute("position");
+  if(!oldPos || oldPos.count!==vcount) geo.deleteAttribute("normal");
+  geo.setAttribute("position",new THREE.BufferAttribute(all,3));
+  if(cols!==lastCols||rows!==lastRows){
+    const idx=new Uint32Array(((rows-1)*cols*2+cols*2)*3); let q=0;
+    for(let j=0;j<rows-1;j++) for(let i=0;i<cols;i++){
+      const a=j*cols+i, b=j*cols+(i+1)%cols, c=a+cols, d=b+cols;
+      idx[q++]=a; idx[q++]=c; idx[q++]=b; idx[q++]=b; idx[q++]=c; idx[q++]=d;
+    }
+    for(let i=0;i<cols;i++){ const a=i, b=(i+1)%cols; idx[q++]=bi; idx[q++]=a; idx[q++]=b;
+      const c=(rows-1)*cols+i, d=(rows-1)*cols+(i+1)%cols; idx[q++]=ti; idx[q++]=d; idx[q++]=c; }
+    geo.setIndex(new THREE.BufferAttribute(idx,1)); lastCols=cols; lastRows=rows;
+  }
+  geo.computeVertexNormals(); geo.computeBoundingSphere();
+  mesh.position.y=-P.height/2; updateGlass();
+  dist=Math.max(P.height*1.1, s.maxR*2.3)*2.05;
+  updateStats(s);
+  try{ localStorage.setItem("vase-params",JSON.stringify(P)); }catch(e){}
+  if(!pdrag){ fitView(); drawProfile(); }
+  if(!secDrag) drawSection();
+}
+function updateStats(s){
+  document.getElementById("sH").textContent=P.height.toFixed(0)+" mm";
+  // a round vase reports its diameter, any other cross-section its footprint
+  document.getElementById("sDl").textContent= P.secType ? "Breite × Tiefe" : "Max. Ø";
+  document.getElementById("sD").textContent= P.secType ? `${s.W.toFixed(0)} × ${s.D.toFixed(0)} mm` : (s.maxR*2).toFixed(0)+" mm";
+  document.getElementById("sF").textContent=s.innerD.toFixed(1)+" mm";
+  const gn=document.getElementById("glassNote");
+  if(P.cylOn){
+    const msgs=[];
+    msgs.push(s.pushed>0.05 ? `Die Form wurde an den engen Stellen um bis zu ${s.pushed.toFixed(1)} mm nach außen geweitet.` : "Das Glas passt, die Form musste nicht angepasst werden.");
+    if(P.cylH>P.height) msgs.push(`Das Glas ragt ${(P.cylH-P.height).toFixed(0)} mm über den Rand.`);
+    gn.textContent=msgs.join(" "); gn.classList.toggle("warn",P.cylH>P.height);
+  } else { gn.textContent=""; gn.classList.remove("warn"); }
+  const box=document.getElementById("spacingBox");
+  if(P.ribs>0 && P.depth>0){ const rmin=Math.min(...P.pts.map(q=>q[1]))*(P.scale/100);
+    // ribs along the outline are evenly spaced; ribs at even world angles are closest where the outline runs nearest the axis
+    const sp= verticalRibs(P) ? secInfo().minDs*2*Math.PI*rmin/P.ribs : s.shapeL*rmin/P.ribs;
+    document.getElementById("sS").textContent=sp.toFixed(1)+" mm"; box.classList.toggle("warn", sp<1.2);
+    box.title= sp<1.2 ? "An der engsten Stelle sind die Rippen schmaler als ca. 3 Linienbreiten einer 0,4er-Düse und verschwimmen beim Drucken." : "Abstand an der engsten Stelle";
+  } else { document.getElementById("sS").textContent="–"; box.classList.remove("warn"); }
+}
+let pending=false;
+function schedule(){ if(pending) return; pending=true; requestAnimationFrame(()=>{ pending=false; rebuild(); }); }
+
+function resize(){ const w=stage.clientWidth, h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(stage);
+const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches; if(reduce) autoSpin=false;
+let zoom=1;
+// rendering pauses during export: on slow machines a busy render loop starves the ZIP packer
+let renderPaused=false;
+function frame(){
+  if(renderPaused) return;
+  if(autoSpin) rotY+=0.004;
+  group.rotation.y=rotY;
+  const d=dist*zoom;
+  camera.position.set(0, Math.sin(tilt)*d, Math.cos(tilt)*d); camera.lookAt(0,0,0);
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+let drag=null;
+stage.addEventListener("pointerdown",e=>{ drag={x:e.clientX,y:e.clientY,r:rotY,t:tilt}; autoSpin=false; stage.setPointerCapture(e.pointerId); });
+stage.addEventListener("pointermove",e=>{ if(!drag) return; rotY=drag.r+(e.clientX-drag.x)*0.01; tilt=Math.max(-0.4,Math.min(1.2,drag.t+(e.clientY-drag.y)*0.006)); });
+stage.addEventListener("pointerup",()=>drag=null); stage.addEventListener("pointercancel",()=>drag=null);
+stage.addEventListener("wheel",e=>{ e.preventDefault(); zoom=Math.max(0.5,Math.min(2.2,zoom*(1+e.deltaY*0.001))); },{passive:false});
+
+// color swatches
+const swBox=document.getElementById("swatches");
+COLORS.forEach(([n,c],i)=>{ const b=document.createElement("button"); b.type="button"; b.className="sw"; b.style.background=c; b.title=n; b.setAttribute("aria-label",n);
+  b.setAttribute("aria-pressed",i===0?"true":"false");
+  b.addEventListener("click",()=>{ mat.color.set(c); swBox.querySelectorAll(".sw").forEach(x=>x.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); });
+  swBox.appendChild(b); });
+
+// ---------- Export ----------
+function buildSTL(p,quality){
+  const N=Math.max(1,Math.round(p.ribs));
+  const cf=colFactor(p), vr=verticalRibs(p);
+  const cols= quality==="fine" ? Math.min(3000,Math.max(vr?1440:720,N*12*cf)) : Math.min(2000,Math.max(vr?960:480,N*8*cf));
+  const rows= Math.min(1200, Math.max(120, Math.round(p.height/(quality==="fine"?0.4:0.8))));
+  const s=buildSurface(p,cols,rows), P3=s.pos;
+  const tri=(rows-1)*cols*2+cols*2;
+  const buf=new ArrayBuffer(84+tri*50), dv=new DataView(buf);
+  const hdr="Rippenvasen-Generator"; for(let i=0;i<hdr.length;i++) dv.setUint8(i,hdr.charCodeAt(i));
+  dv.setUint32(80,tri,true); let o=84;
+  // Y-up (three) -> Z-up (slicer): (x,y,z) -> (x,-z,y)
+  const V=(i)=>[P3[i*3],-P3[i*3+2],P3[i*3+1]];
+  const bot=[0,0,0], top=[0,0,p.height];
+  function put(a,b,c){
+    const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1;
+    dv.setFloat32(o,nx/l,true);dv.setFloat32(o+4,ny/l,true);dv.setFloat32(o+8,nz/l,true); o+=12;
+    for(const v of [a,b,c]){ dv.setFloat32(o,v[0],true);dv.setFloat32(o+4,v[1],true);dv.setFloat32(o+8,v[2],true); o+=12; }
+    dv.setUint16(o,0,true); o+=2;
+  }
+  for(let j=0;j<rows-1;j++) for(let i=0;i<cols;i++){
+    const a=j*cols+i, b=j*cols+(i+1)%cols, c=a+cols, d=b+cols;
+    const A=V(a),B=V(b),C=V(c),D=V(d); put(A,C,B); put(B,C,D);
+  }
+  for(let i=0;i<cols;i++){ put(bot,V(i),V((i+1)%cols)); put(top,V((rows-1)*cols+(i+1)%cols),V((rows-1)*cols+i)); }
+  return {buf,tri};
+}
+const statusEl=document.getElementById("status"), exportBtn=document.getElementById("export");
+// Inside Claude the page runs sandboxed and saves through the downloads capability.
+// Opened as a plain file or on any other site, a normal browser download works instead.
+const inClaude=!!(window.claude && window.claude.use);
+let downloads=null;
+if(inClaude){ window.claude.use("downloads").then(d=>{ downloads=d; if(!d) statusEl.textContent="Export ist in dieser Ansicht nicht verfügbar. Lade die HTML-Datei herunter und öffne sie im Browser, dann funktioniert der Export dort."; }).catch(()=>{}); }
+function browserDownload(blob,filename){
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+exportBtn.addEventListener("click",async()=>{
+  if(inClaude && !downloads){ statusEl.textContent="Export ist in dieser Ansicht nicht verfügbar. Lade die HTML-Datei herunter und öffne sie im Browser, dann funktioniert der Export dort."; return; }
+  exportBtn.disabled=true; renderPaused=true; statusEl.textContent="Erzeuge Modell …";
+  await new Promise(r=>setTimeout(r,30));
+  try{
+    const q=document.getElementById("quality").value;
+    const {buf,tri}=buildSTL(P,q);
+    statusEl.textContent=`${(tri/1e6).toFixed(2)} Mio. Dreiecke, packe ZIP …`;
+    const name=`vase-${Math.round(P.height)}mm-${Math.round(P.ribs)}rippen`;
+    const zip=new JSZip(); zip.file(name+".stl",buf); zip.file(name+"-einstellungen.json",JSON.stringify(Object.assign({generatorVersion:APP_VERSION},P),null,2));
+    const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
+    if(downloads){ statusEl.textContent="Bitte Speichern bestätigen …"; await downloads.save({filename:name+".zip",data:blob}); }
+    else browserDownload(blob,name+".zip");
+    statusEl.textContent=`Gespeichert: ${name}.zip (${(blob.size/1e6).toFixed(1)} MB)`;
+  }catch(e){
+    const c=e&&e.code;
+    statusEl.textContent = c==="declined" ? "Speichern abgebrochen." : c==="rate_limited" ? "Ein Speicherdialog ist schon offen." : "Export fehlgeschlagen: "+((e&&e.message)||e);
+  }finally{ exportBtn.disabled=false; if(renderPaused){ renderPaused=false; requestAnimationFrame(frame); } }
+});
+
+// ---------- Import ----------
+const importFile=document.getElementById("importFile");
+document.getElementById("import").addEventListener("click",()=>importFile.click());
+importFile.addEventListener("change",async()=>{
+  const f=importFile.files&&importFile.files[0]; importFile.value=""; if(!f) return;
+  try{
+    let text;
+    if(/\.zip$/i.test(f.name) || f.type.includes("zip")){
+      const zip=await JSZip.loadAsync(f);
+      const entry=Object.values(zip.files).find(e=>!e.dir && /\.json$/i.test(e.name));
+      if(!entry) throw new Error("In der ZIP-Datei ist keine JSON-Datei mit Einstellungen.");
+      text=await entry.async("string");
+    } else text=await f.text();
+    let obj; try{ obj=JSON.parse(text); }catch(e){ throw new Error("Die Datei ist kein gültiges JSON."); }
+    const s=parseSettings(obj);
+    if(!s) throw new Error("Die Datei enthält keine Vasen-Einstellungen aus diesem Generator.");
+    P=s; selPt=-1; markPreset(null); syncControls(); fitView(); schedule();
+    statusEl.textContent=`Geladen: ${f.name}`;
+  }catch(e){ statusEl.textContent="Laden fehlgeschlagen: "+(e.message||e); }
+});
+
+fitView(); syncControls(); markPreset("Düne"); rebuild(); resize(); frame();
+})();
+</script>
+
+</body>
+</html>
